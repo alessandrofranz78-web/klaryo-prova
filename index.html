@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="it">
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KLARYO</title>
+<meta name="description" content="Guarda una casa vera, poi scopri quanta energia la tua casa può farsi da sola. Tutto resta nel tuo browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Una cosa per schermata. In alto l'illustrazione ufficiale KLARYO, sotto una frase e i pulsanti. Tema chiaro del marchio. */
+:root{
+  --bg:#F4F3EC; --card:#FFFFFF; --fg:#1F2D24; --muted:#5D6A62; --line:#DEDDD3;
+  --green:#279E67; --green-d:#1D6E46; --yellow:#EFC44C; --blue:#6DC4E4; --red:#D9473F; --sun:#E9B824;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Figtree","Helvetica Neue",Arial,system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--green);outline-offset:3px;border-radius:10px}
+h1,h2{font-family:var(--f-display);font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.08}
+h1{font-size:clamp(28px,5vw,40px)}
+h2{font-size:clamp(24px,4.2vw,32px)}
+p{margin:0}
+
+.top{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;max-width:1100px;margin:0 auto}
+.top img{height:30px;width:auto;display:block}
+.linkbtn{background:none;border:0;cursor:pointer;color:var(--muted);font-weight:600;font-size:15px;text-decoration:underline;text-underline-offset:4px;padding:6px 2px}
+
+main{max-width:1100px;margin:0 auto;padding:0 16px 48px;display:grid;gap:18px}
+@media (min-width:900px){ main{grid-template-columns:1.15fr 1fr;align-items:start;gap:28px} .stage{position:sticky;top:12px} }
+@media (max-width:899px){ .stage{position:sticky;top:0;z-index:3;margin:0 -16px;border-radius:0 0 22px 22px} }
+
+.stage{background:linear-gradient(180deg,var(--sky1,#DCEBF2),var(--sky2,#F4F3EC));border-radius:22px;overflow:hidden;transition:background .8s}
+.stage .scena svg{display:block;width:100%;height:auto}
+.stage .scena [class^="k-"]{transition:opacity .6s ease}
+.season{position:absolute}
+.badge{position:absolute;left:12px;top:10px;background:rgba(255,255,255,.85);border-radius:999px;padding:4px 12px;font-weight:700;font-size:14px}
+.stage-in{position:relative}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;display:grid;gap:16px}
+.step{font-weight:700;font-size:14px;color:var(--green-d);letter-spacing:.02em}
+.lead{font-size:18px;color:#34443A}
+.small{font-size:14px;color:var(--muted)}
+.btn{cursor:pointer;border:0;border-radius:14px;padding:14px 20px;font-weight:700;font-size:17px;background:var(--green-d);color:#fff;justify-self:start}
+.btn:hover{background:#15563A}
+.choices{display:grid;gap:10px}
+.choice{cursor:pointer;text-align:left;border:2px solid var(--line);background:#FBFBF7;border-radius:16px;padding:14px 16px;font-weight:600;font-size:17px;transition:border-color .2s,background .2s}
+.choice:hover{border-color:var(--green)}
+.choice.on{border-color:var(--green);background:#EAF6EF}
+.choice small{display:block;font-weight:500;color:var(--muted);font-size:14px;margin-top:2px}
+.seg{display:inline-grid;grid-auto-flow:column;background:#ECEBE3;border-radius:14px;padding:4px;gap:4px;justify-self:start}
+.seg button{border:0;background:none;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer}
+.seg button.on{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.big{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,6vw,48px);line-height:1}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dots i{width:22px;height:22px;border-radius:50%;background:#E4E3DA;transition:background .4s}
+.dots i.on{background:var(--sun)}
+.say{background:#FFF8E1;border-radius:14px;padding:12px 14px;font-weight:500}
+.money{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.money div{background:#FBFBF7;border:1px solid var(--line);border-radius:14px;padding:12px}
+.money b{display:block;font-family:var(--f-display);font-size:26px}
+.back{justify-self:start}
+details{border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600;color:var(--green-d)}
+details ul{padding-left:18px;margin:8px 0 0;color:var(--muted);font-size:15px}
+.fade{animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fan{transform-box:fill-box;transform-origin:center;animation:spin 1.2s linear infinite}
+@media (prefers-reduced-motion:reduce){ .fade,.fan{animation:none} .stage .scena [class^="k-"]{transition:none} }
+
+#info{position:fixed;inset:0;z-index:20;background:rgba(20,30,24,.55);display:grid;place-items:center;padding:16px}
+#info[hidden]{display:none}
+#info .box{max-width:640px;max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:22px;display:grid;gap:12px}
+#info h3{margin:0;font-size:17px}
+#info p{color:#34443A;font-size:16px}
+#mappa{height:min(58vh,440px);background:#cfd8d4}
+#mirino{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;pointer-events:none;z-index:500;background:linear-gradient(#fff,#fff) center/2px 100% no-repeat,linear-gradient(#fff,#fff) center/100% 2px no-repeat;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))}
+@media (max-width:899px){ #mappa{height:46vh} }
+.cerca{display:grid;gap:6px}
+.cerca .riga{display:flex;gap:8px}
+.cerca input{flex:1;min-width:0;font:inherit;font-size:17px;padding:12px 14px;border:2px solid var(--line);border-radius:14px;background:#FBFBF7;color:var(--fg)}
+.cerca input:focus{border-color:var(--green-d);outline:none}
+.trovata{display:grid;gap:10px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+
+<div class="top">
+  <img src="img/logo.png" alt="Klaryo" width="312" height="118">
+  <button class="linkbtn" id="openInfo" type="button">Chi paga KLARYO</button>
+</div>
+
+<main>
+  <div class="stage" id="stage">
+    <div class="stage-in">
+      <div id="scena" class="scena" role="img" aria-label="Illustrazione della casa con i suoi impianti"></div>
+      <div id="mappa" hidden aria-label="Mappa satellitare della casa"></div>
+      <div id="mirino" hidden aria-hidden="true"></div>
+      <div class="badge" id="badge" hidden></div>
+    </div>
+  </div>
+  <div class="card" id="card"></div>
+  <div class="sr" id="live" aria-live="polite"></div>
+</main>
+
+<div id="info" hidden role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+  <div class="box">
+    <button class="linkbtn" type="button" id="closeInfo" style="justify-self:end">Chiudi</button>
+    <h2 id="infoTitle">Per te è gratis. Ecco chi paga.</h2>
+    <h3>Chi paga</h3><p>KLARYO è pagato dagli installatori partner quando ricevono una richiesta. Quello che vedi qui è uguale sia che tu chieda un installatore sia che non lo faccia.</p>
+    <h3>I tuoi dati</h3><p>Non salviamo niente: le risposte restano nel tuo browser. Per trovare la casa, l'indirizzo e la posizione vengono mandati al servizio di mappe (in questa prova OpenStreetMap ed Esri; nella versione finale Google Maps). Non chiediamo nome, telefono o email.</p>
+    <h3>La casa di esempio</h3><p>È quella di Alessandro Franzoni, che ha fondato KLARYO. I numeri vengono dalle sue bollette e dai pagamenti del GSE del 2025.</p>
+    <p class="small">Anteprima. Ragione sociale, privacy e termini sono in aggiornamento.</p>
+  </div>
+</div>
+
+<script>
+/* ============ DATI ============ */
+const MESI=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+const MESI_L=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+const GIORNI=[31,28,31,30,31,30,31,31,30,31,30,31];
+
+/* Casa di esempio: anno 2025. kWh comprati = bollette del fornitore; kWh immessi = misure GSE (ultima versione per mese). */
+const ESEMPIO={
+  comprati:[941,519,127,31,2,4,151,79,3,25,2,653],
+  immessi:[8,30,690,1592,2341,2554,2198,1730,1548,1098,725,29],
+  bolletteEuro:1017, gseEuro:1334
+};
+
+/* Ipotesi del modello: indicative, da rivedere con gli installatori. */
+const H={
+  resaKwp:{nord:1150,centro:1300,sud:1450},              // kWh/anno per kWp
+  profiloSole:[.037,.052,.085,.103,.118,.123,.128,.113,.088,.068,.043,.032],
+  profiloFreddo:[.20,.17,.12,.05,0,0,0,0,0,.06,.16,.20],  // quota annua di riscaldamento
+  calorePerMq:{recente:45,media:90,vecchia:140},        // kWh termici/m² anno, clima nord
+  clima:{nord:1,centro:.75,sud:.5},
+  acsPerPersona:600,                                     // acqua calda, kWh termici
+  rendCaldaia:.9, copPdc:3.2, cappotto:.6,
+  elettricoPerPersone:[0,1500,2200,2700,3200,3800],
+  quotaGiorno:.35, quotaGiornoPdc:.45, quotaGiornoAuto:.15, quotaGiornoAutoSmart:.6,
+  autoKwh:2000,                                          // 12.000 km a 17 kWh/100 km
+  cucinaGas:220, cucinaInduzione:160,
+  battUtile:.85, battResa:.9,                           // capacità usabile; resa carica+scarica
+  maxKwp:{villa:12,bifam:6,apt:3},
+  mq:{villa:140,bifam:110,apt:80}
+};
+
+/* ============ MOTORE (funzione pura) ============ */
+function sumv(a){return a.reduce((s,x)=>s+x,0)}
+function norm(a){const s=sumv(a);return a.map(x=>x/s)}
+const SOLE=norm(H.profiloSole), FREDDO=norm(H.profiloFreddo);
+
+function calcola(c){
+  const pers=Math.min(5,Math.max(1,c.persone||2));
+  const zona=c.zona||'nord';
+  const pdc=c.risc==='pdc'||c.up.pdc;
+  const induz=c.cucina==='induzione'||c.up.induzione;
+  const ev=c.auto==='ev'||c.up.auto;
+  const mq=c.mq||H.mq[c.tipo||'villa'];
+  let caloreAnno=mq*H.calorePerMq[c.epoca||'media']*H.clima[zona];
+  let acs=pers*H.acsPerPersona;
+  let base=H.elettricoPerPersone[pers], autoKwh=H.autoKwh, cucinaKwh=H.cucinaInduzione;
+  // bolletta nota: è il totale di luce di oggi. Se dentro c'è già la pompa di calore, il riscaldamento
+  // stimato viene riscalato perché il totale torni (al massimo il 60% della bolletta).
+  if(c.kwh){
+    let resto=c.kwh;
+    if(c.cucina==='induzione'){ cucinaKwh=Math.min(H.cucinaInduzione,resto*.1); resto-=cucinaKwh; }
+    if(c.auto==='ev'){ autoKwh=Math.min(H.autoKwh,resto*.5); resto-=autoKwh; }
+    if(c.risc==='pdc'){ const stima=(caloreAnno+acs)/H.copPdc, quota=Math.min(stima,resto*.6), k=quota/stima;
+      caloreAnno*=k; acs*=k; resto-=quota; }
+    base=resto;
+  }
+  if(c.up.cappotto) caloreAnno*=H.cappotto;
+  const kwp=c.up.fv||0, batt=c.up.batt||0;
+  const smart=ev&&c.up.wallbox&&kwp>0;
+  const m=[];
+  for(let i=0;i<12;i++){
+    const fBase=base/12, fCucina=induz?cucinaKwh/12:0;
+    const fPdc=pdc?(caloreAnno*FREDDO[i]+acs/12)/H.copPdc:0;
+    const fAuto=ev?autoKwh/12:0;
+    const elettrico=fBase+fCucina+fPdc+fAuto;
+    const giorno=(fBase+fCucina)*H.quotaGiorno+fPdc*H.quotaGiornoPdc+fAuto*(smart?H.quotaGiornoAutoSmart:H.quotaGiornoAuto);
+    const comb=(pdc?0:(caloreAnno*FREDDO[i]+acs/12)/H.rendCaldaia)+(induz?0:H.cucinaGas/12);
+    const sole=kwp*(c.resa||H.resaKwp[zona])*SOLE[i];
+    const diretto=Math.min(sole,giorno);
+    const caricati=Math.max(0,Math.min(batt*H.battUtile*GIORNI[i], sole-diretto, (elettrico-diretto)/H.battResa));
+    const dallaCasa=diretto+caricati*H.battResa;
+    m.push({elettrico,comb,sole,diretto,caricati,dallaCasa,rete:elettrico-dallaCasa,immessi:sole-diretto-caricati,totale:elettrico+comb});
+  }
+  const T=k=>sumv(m.map(x=>x[k]));
+  const tot=T('totale');
+  return {m,diretto:T('diretto'),caricati:T('caricati'),elettrico:T('elettrico'),comb:T('comb'),sole:T('sole'),dallaCasa:T('dallaCasa'),rete:T('rete'),immessi:T('immessi'),totale:tot,
+    indip: tot>0? T('dallaCasa')/tot : 0, ev, pdc, induz, smart, kwp, batt};
+}
+
+
+
+/* ============ SCENA ============ */
+const $=s=>document.querySelector(s);
+const el=(t,cls,html)=>{const e=document.createElement(t); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e;};
+const fmt=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+let SVG=null;
+const NS='http://www.w3.org/2000/svg';
+function vis(name,on){ if(!SVG)return; SVG.querySelectorAll('.k-'+name).forEach(e=>e.style.opacity=on?1:0); }
+function extra(){ // pompa di calore e caldaia, disegnate nello stesso stile, accanto al blocco alto
+  const g=document.createElementNS(NS,'g'); g.innerHTML=`
+   <g class="k-pdc" transform="translate(48,-8)"><polygon points="372,318 398,303 418,315 392,330" fill="#FFFFFF" stroke="#C9CFD1"/>
+    <polygon points="372,318 392,330 392,352 372,340" fill="#E6EAEB" stroke="#C9CFD1"/>
+    <polygon points="392,330 418,315 418,337 392,352" fill="#CBD3D6" stroke="#C9CFD1"/>
+    <ellipse cx="405" cy="334" rx="8" ry="9" fill="#9FAAAE"/><g class="fan"><path d="M405 327 v14 M398 334 h14" stroke="#5F6B70" stroke-width="2"/></g></g>
+   <g class="k-gas"><polygon points="196,232 204,228 204,206 196,210" fill="#A9826A"/><polygon points="188,228 196,232 196,210 188,206" fill="#C9A28A"/><polygon points="188,206 196,202 204,206 196,210" fill="#6B5446"/>
+    <circle cx="198" cy="194" r="6" fill="#B8BEC0" opacity=".85"/><circle cx="205" cy="180" r="8" fill="#C9CDCF" opacity=".75"/><circle cx="214" cy="163" r="10" fill="#D8DBDC" opacity=".65"/></g>`;
+  SVG.appendChild(g);
+}
+async function caricaScena(){
+  try{ const r=await fetch('img/scena.svg'); const t=await r.text(); $('#scena').innerHTML=t; SVG=$('#scena svg'); SVG.removeAttribute('width'); SVG.removeAttribute('height');
+    extra(); vis('nosign',false); }
+  catch(e){ $('#scena').innerHTML='<p class="small" style="padding:20px">Illustrazione non disponibile.</p>'; }
+}
+/* stato della scena: cosa si vede */
+let ultimaScena=null;
+function scena(o){
+  ultimaScena=o;
+  const n=o.pannelli||0; for(let i=1;i<=5;i++) vis('pv'+i,i<=n);
+  vis('batt1',o.batt>=1); vis('batt2',o.batt>=2);
+  vis('inv',n>0); vis('ev',!!o.auto); vis('fam',!!o.fam);
+  vis('pdc',!!o.pdc); vis('gas',!!o.gas);
+  const st=$('#stage');
+  if(o.stagione==='inverno'){ st.style.setProperty('--sky1','#D5DCE2'); st.style.setProperty('--sky2','#EEEEE8'); }
+  else { st.style.setProperty('--sky1','#CFE8F4'); st.style.setProperty('--sky2','#F4F3EC'); }
+  if(SVG) SVG.querySelectorAll('.k-sun').forEach(e=>{ e.style.transition='transform .8s, opacity .8s'; e.style.transform=o.stagione==='inverno'?'translate(-40px,60px)':'none'; e.style.opacity=o.stagione==='inverno'?.55:1; });
+  const b=$('#badge'); if(o.badge){ b.hidden=false; b.textContent=o.badge; } else b.hidden=true;
+}
+
+/* ============ DOV'È LA CASA ============
+   Con GOOGLE_KEY: Google Maps (satellite), suggerimenti indirizzo, Solar API sul tetto vero.
+   Senza: OpenStreetMap (Nominatim per l'indirizzo, contorno dell'edificio da Overpass) e foto satellitare Esri.
+   L'indirizzo serve solo a trovare la casa: non viene salvato. */
+const GOOGLE_KEY='';                       // chiave limitata ai domini klaryo.it (da Digital Oriented)
+const KWP_PER_M2=1/5.5;                    // circa 5,5 m² di tetto per ogni kW di pannelli
+const QUOTA_TETTO_UTILE=.35;               // parte dell'impronta usabile per i pannelli (falde, camini, bordi)
+
+function zonaDaLat(lat){ return lat>=44 ? 'nord' : lat>=41.6 ? 'centro' : 'sud'; }
+function resaDaLat(lat){ // kWh per kW in un anno, interpolata tra Sicilia (37°: 1.500) e Alto Adige (46,5°: 1.130)
+  const t=Math.max(0,Math.min(1,(lat-37)/(46.5-37))); return Math.round(1500-t*370); }
+function areaPoligono(pts){ // pts [[lat,lon]...] → m², proiezione locale
+  const R=6371000, lat0=pts.reduce((s,p)=>s+p[0],0)/pts.length*Math.PI/180;
+  const xy=pts.map(([la,lo])=>[lo*Math.PI/180*R*Math.cos(lat0), la*Math.PI/180*R]);
+  let a=0; for(let i=0;i<xy.length;i++){ const [x1,y1]=xy[i], [x2,y2]=xy[(i+1)%xy.length]; a+=x1*y2-x2*y1; } return Math.abs(a/2); }
+function dentro(pt,poly){ let c=false; for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const [yi,xi]=poly[i],[yj,xj]=poly[j];
+  if(((yi>pt[0])!==(yj>pt[0])) && (pt[1]<(xj-xi)*(pt[0]-yi)/(yj-yi)+xi)) c=!c; } return c; }
+function arrotonda(x){ return Math.round(x*2)/2; }
+
+const OSM={
+  nome:'OpenStreetMap',
+  async cerca(testo){
+    const u='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=it&addressdetails=1&q='+encodeURIComponent(testo);
+    const r=await fetch(u,{headers:{'Accept-Language':'it'}}); if(!r.ok) throw new Error('ricerca');
+    const j=await r.json(); if(!j.length) return null;
+    const a=j[0].address||{}; const via=[a.road,a.house_number].filter(Boolean).join(' '); const com=a.city||a.town||a.village||a.municipality||'';
+    return {lat:+j[0].lat, lon:+j[0].lon, etichetta:[via,com].filter(Boolean).join(', ')||j[0].display_name};
+  },
+  async edificio(lat,lon){
+    const q=`[out:json][timeout:15];way(around:30,${lat},${lon})["building"];out tags geom;`;
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)}); if(!r.ok) throw new Error('edificio');
+    const j=await r.json();
+    const cand=(j.elements||[]).filter(w=>w.geometry&&w.geometry.length>3).map(w=>({poly:w.geometry.map(g=>[g.lat,g.lon]),tags:w.tags||{}}));
+    if(!cand.length) return null;
+    let b=cand.find(c=>dentro([lat,lon],c.poly));
+    if(!b){ const d=c=>{const m=c.poly.reduce((s,p)=>[s[0]+p[0],s[1]+p[1]],[0,0]).map(v=>v/c.poly.length); return (m[0]-lat)**2+(m[1]-lon)**2;}; b=cand.sort((x,y)=>d(x)-d(y))[0]; }
+    const impronta=areaPoligono(b.poly);
+    const piani=+b.tags['building:levels']||null;
+    const condominio=['apartments','residential'].includes(b.tags.building) && (piani||0)>=3 || (piani||0)>=4 || impronta>450;
+    return {poly:b.poly, impronta, piani, condominio, maxKwp:arrotonda(impronta*QUOTA_TETTO_UTILE*KWP_PER_M2), resa:resaDaLat(lat), fonte:'OpenStreetMap'};
+  },
+  mappa(div,lat,lon,poly,onClick){
+    if(!window.L){ div.textContent='Mappa non disponibile.'; return; }
+    if(div._map){ div._map.remove(); }
+    const m=L.map(div,{zoomControl:true,attributionControl:true}).setView([lat,lon],19); m.attributionControl.setPrefix(false);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:19,attribution:'Foto © Esri, Maxar · Edifici © OpenStreetMap'}).addTo(m);
+    if(poly){ const p=L.polygon(poly,{color:'#EFC44C',weight:3,fillColor:'#EFC44C',fillOpacity:.25}).addTo(m); m.fitBounds(p.getBounds(),{padding:[30,30],maxZoom:20}); }
+    else L.circleMarker([lat,lon],{radius:8,color:'#EFC44C'}).addTo(m);
+    if(onClick) m.on('click',e=>onClick(e.latlng.lat,e.latlng.lng));
+    div._map=m; setTimeout(()=>m.invalidateSize(),50);
+  }
+};
+
+const GOOGLE={
+  nome:'Google',
+  pronto:null,
+  carica(){ if(this.pronto) return this.pronto;
+    this.pronto=new Promise((ok,ko)=>{ window.__gmok=ok; const s=document.createElement('script');
+      s.src=`https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&libraries=places,geometry&language=it&region=IT&callback=__gmok`; s.onerror=ko; document.head.append(s); });
+    return this.pronto; },
+  async cerca(testo){ await this.carica();
+    const g=new google.maps.Geocoder(); const {results}=await g.geocode({address:testo,region:'IT'});
+    if(!results.length) return null; const loc=results[0].geometry.location;
+    return {lat:loc.lat(), lon:loc.lng(), etichetta:results[0].formatted_address.replace(/, Italia$/,'')}; },
+  async edificio(lat,lon){
+    const r=await fetch(`https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude=${lat}&location.longitude=${lon}&requiredQuality=MEDIUM&key=${GOOGLE_KEY}`);
+    if(r.status===404) return OSM.edificio(lat,lon);  // tetto non coperto dalla Solar API: si ripiega sul contorno OSM
+    if(!r.ok){ console.warn('Solar API',r.status); const o=await OSM.edificio(lat,lon); if(o) o.avviso='I dati del tetto da Google non sono disponibili in questo momento: usiamo una stima dal contorno della casa.'; return o; }
+    const j=await r.json(), sp=j.solarPotential||{};
+    const cap=(sp.panelCapacityWatts||400)/1000, maxKwp=arrotonda((sp.maxArrayPanelsCount||0)*cap);
+    const cfg=(sp.solarPanelConfigs||[]).at(-1);
+    const resa=cfg? Math.round(cfg.yearlyEnergyDcKwh/(cfg.panelsCount*cap)*.85) : resaDaLat(lat); // DC → AC, perdite di sistema
+    const bb=j.boundingBox; const poly=bb?[[bb.sw.latitude,bb.sw.longitude],[bb.sw.latitude,bb.ne.longitude],[bb.ne.latitude,bb.ne.longitude],[bb.ne.latitude,bb.sw.longitude]]:null;
+    const impronta=sp.wholeRoofStats?.groundAreaMeters2||null;
+    const configs=(sp.solarPanelConfigs||[]).map(c=>({kwp:c.panelsCount*cap, kwh:c.yearlyEnergyDcKwh*.85}));
+    return {poly, impronta, piani:null, condominio:(impronta||0)>450, maxKwp, resa, configs, ore:sp.maxSunshineHoursPerYear, fonte:'Google Solar API'};
+  },
+  mappa(div,lat,lon,poly,onClick){
+    const m=new google.maps.Map(div,{center:{lat,lng:lon},zoom:20,mapTypeId:'satellite',tilt:0,disableDefaultUI:true,zoomControl:true});
+    if(poly) new google.maps.Polygon({map:m,paths:poly.map(([a,b])=>({lat:a,lng:b})),strokeColor:'#EFC44C',strokeWeight:3,fillColor:'#EFC44C',fillOpacity:.25,clickable:false});
+    if(onClick) m.addListener('click',e=>onClick(e.latLng.lat(),e.latLng.lng()));
+    div._gmap=m;
+  }
+};
+const MAPPA=GOOGLE_KEY?GOOGLE:OSM;
+let leafletPronto=null;
+function caricaLeaflet(){ if(GOOGLE_KEY||window.L) return Promise.resolve(); if(leafletPronto) return leafletPronto;
+  const css=new Promise(ok=>{ const c=document.createElement('link'); c.rel='stylesheet'; c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'; c.onload=ok; c.onerror=ok; document.head.append(c); });
+  const js=new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload=ok; s.onerror=ko; document.head.append(s); });
+  leafletPronto=Promise.all([css,js]);
+  return leafletPronto; }
+
+let richiesta=0, ultimaRicerca=0;
+function mostraMappa(on){ $('#mappa').hidden=!on; $('#mirino').hidden=!on; $('#scena').hidden=on; }
+function centroMappa(){ const d=$('#mappa'); if(d._map){ const c=d._map.getCenter(); return [c.lat,c.lng]; } if(d._gmap){ const c=d._gmap.getCenter(); return [c.lat(),c.lng()]; } return null; }
+
+function dove(){
+  mostraMappa(!!C.casa);
+  if(C.casa) MAPPA.mappa($('#mappa'),C.casa.lat,C.casa.lon,C.casa.poly,scegliPunto);
+  else scena({pannelli:0,batt:0,auto:false,fam:false,pdc:false,gas:false,stagione:'estate'});
+  const f=el('form','cerca'); f.innerHTML=`<label for="addr" class="small">Via, numero e comune</label>
+    <div class="riga"><input id="addr" name="addr" autocomplete="street-address" placeholder="Es. Via Emilia 10, Modena" value="${C.casa?C.casa.etichetta.replace(/"/g,'&quot;'):''}"><button class="btn" type="submit">Trova</button></div>`;
+  const msg=el('p','small','');
+  msg.id='addrMsg'; msg.setAttribute('role','status');
+  f.onsubmit=async e=>{ e.preventDefault(); const t=f.addr.value.trim(); if(t.length<5){ msg.textContent='Scrivi via, numero e comune.'; return; }
+    const ora=Date.now(); if(ora-ultimaRicerca<1500){ msg.textContent='Un attimo…'; return; } ultimaRicerca=ora;
+    const id=++richiesta; msg.textContent='Cerco la casa…';
+    try{ await caricaLeaflet(); const p=await MAPPA.cerca(t); if(id!==richiesta) return; if(!p){ msg.textContent='Non trovo questo indirizzo. Prova ad aggiungere il comune.'; return; }
+      await trovaEdificio(p.lat,p.lon,p.etichetta,id); }
+    catch(err){ msg.textContent='La ricerca non risponde adesso. Riprova tra poco.'; } };
+  const nodes=[el('div','step','2 di 3 · La tua casa'), el('h2','','Dov\'è la tua casa?'),
+    el('p','lead','La cerchiamo sulla mappa: dal satellite vediamo il tetto e quanti pannelli ci stanno, così non devi rispondere a domande su metri quadri ed esposizione.'),
+    f, msg];
+  if(C.casa){ nodes.push(bottone('Scegli la casa al centro della mappa (+)',()=>{ const c=centroMappa(); if(c) scegliPunto(c[0],c[1]); },'linkbtn back')); nodes.push(confermaCasa()); }
+  nodes.push(el('p','small',`Per trovare la casa mandiamo l'indirizzo al servizio di mappe (${MAPPA.nome==='Google'?'Google Maps':'OpenStreetMap ed Esri'}). Noi non lo salviamo.`));
+  nodes.push(bottone('← indietro',()=>{ richiesta++; mostraMappa(false); esempio(); },'linkbtn back'));
+  mostra(nodes,true);
+}
+async function trovaEdificio(lat,lon,etichetta,id){
+  if(id==null) id=++richiesta;
+  const msg=$('#addrMsg'); if(msg) msg.textContent='Guardo il tetto dal satellite…';
+  let e=null; try{ e=await MAPPA.edificio(lat,lon); }catch(err){ e=null; }
+  if(id!==richiesta) return;
+  C.casa={lat,lon,etichetta:etichetta||(C.casa&&C.casa.etichetta)||'', poly:e&&e.poly, impronta:e&&e.impronta, piani:e&&e.piani, maxKwp:e&&e.maxKwp, resa:(e&&e.resa)||resaDaLat(lat), configs:e&&e.configs, avviso:e&&e.avviso, ore:e&&e.ore, fonte:e?e.fonte:null};
+  C.tetto=e? (e.condominio?'no':'si') : null;
+  C.zona=zonaDaLat(lat);
+  dove();
+}
+function scegliPunto(lat,lon){ trovaEdificio(lat,lon,null); }
+function confermaCasa(){
+  const k=C.casa, box=el('div','trovata');
+  if(k.impronta){
+    box.innerHTML=`<p class="say">Abbiamo trovato un edificio di circa <b>${fmt(k.impronta)} m²</b> di pianta${k.piani?` su ${k.piani} piani`:''}.
+      ${C.tetto==='no' ? 'Sembra un condominio: il tetto è di tutti.' : `Sul tetto ci stanno fino a circa <b>${String(Math.min(k.maxKwp,20)).replace('.',',')} kW</b> di pannelli, cioè circa ${Math.round(Math.min(k.maxKwp,20)/.4)} pannelli${k.maxKwp>20?' (oltre non ha senso per una casa)':''}.`}
+      Qui ogni kW di pannelli produce circa <b>${fmt(k.resa)} kWh</b> in un anno.</p>
+      <p class="small">È evidenziato in giallo sulla mappa. Se non è la tua casa, toccala sulla mappa, oppure spostala sotto il + al centro e usa il pulsante qui sopra.</p>`;
+  } else {
+    box.innerHTML=`<p class="say">Abbiamo trovato il punto, ma non il contorno della casa. Toccala sulla mappa, oppure vai avanti: useremo una casa media.</p>`;
+  }
+  if(k.avviso) box.append(el('p','small',k.avviso));
+  const seg=el('div','choices'); seg.append(bottone('Sì, è la mia casa →',()=>{ richiesta++; if(!C.tetto) C.tetto='si'; mostraMappa(false); domanda(0); },'btn'));
+  { const alt=bottone(C.tetto==='no'?'Ho un tetto mio, non è un condominio':'Vivo in un appartamento, il tetto non è mio',()=>{ C.tetto=C.tetto==='no'?'si':'no'; dove(); },'linkbtn back'); seg.append(alt); }
+  box.append(seg); return box;
+}
+
+/* ============ PERCORSO ============ */
+const card=$('#card');
+function mostra(nodes,focus){ card.innerHTML=''; nodes.forEach(n=>card.append(n)); card.firstChild.classList.add('fade');
+  if(focus){ const h=card.querySelector('h1,h2'); if(h){h.tabIndex=-1; h.focus({preventScroll:true});} }
+  if(focus && matchMedia('(max-width:899px)').matches && window.scrollY>$('#stage').offsetHeight) window.scrollTo({top:card.offsetTop-$('#stage').offsetHeight-8,behavior:'smooth'}); }
+function bottone(testo,fn,cls){ const b=el('button',cls||'btn',testo); b.type='button'; b.onclick=fn; return b; }
+
+/* 1 · la casa vera */
+function esempio(stagione,cambio){
+  stagione=stagione||'estate';
+  scena({pannelli:5,batt:0,auto:false,fam:true,pdc:false,gas:false,stagione,badge:stagione==='estate'?'Giugno 2025':'Gennaio 2025'});
+  const seg=el('div','seg'); [['estate','D\'estate'],['inverno','D\'inverno']].forEach(([k,l])=>{ const b=bottone(l,()=>esempio(k,true),k===stagione?'on':''); b.setAttribute('aria-pressed',k===stagione); seg.append(b); });
+  const frase= stagione==='estate'
+    ? `A giugno questa casa si è fatta l'energia da sola. Dalla rete ha comprato <b>4 kWh in tutto il mese</b>: più o meno quattro lavatrici.`
+    : `A gennaio il sole è poco e i pannelli non bastano. Dalla rete ha comprato <b>941 kWh</b>: quanto una famiglia di tre persone usa in circa quattro mesi.`;
+  mostra([
+    el('div','step','1 di 3 · Una casa vera'),
+    el('h1','','Questa è la casa di chi ha fondato KLARYO.'),
+    seg,
+    el('p','say',frase),
+    (()=>{const m=el('div','money'); m.append(el('div','',`<b>1.017 €</b><span class="small">pagati di bollette in tutto il 2025</span>`), el('div','',`<b>1.334 €</b><span class="small">incassati vendendo l'energia in più</span>`)); return m;})(),
+    el('p','small','Fonte: bollette della luce e pagamenti del GSE, anno 2025.'),
+    bottone('Ora vediamo la tua casa →',()=>dove(),'btn')
+  ], false);
+  if(cambio) card.querySelector('.seg .on')?.focus();
+}
+
+/* 2 · poche domande */
+const C={casa:null,tetto:null,zona:null,persone:null,risc:null,auto:null,up:{fv:0,batt:0,pdc:false,induzione:false,cappotto:false,wallbox:false,auto:false}};
+const DOMANDE=[
+  {k:'persone', q:'Quante persone vivono in casa?', o:[[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5 o più']]},
+  {k:'risc', q:'Come scaldi la casa?', o:[['gas','Caldaia a gas','O metano'],['altro','GPL, gasolio o pellet'],['pdc','Pompa di calore','Riscaldamento elettrico']]},
+  {k:'auto', q:'Hai un\'auto elettrica?', o:[['ev','Sì'],['no','No']]}
+];
+function domanda(i){
+  const d=DOMANDE[i];
+  scena({pannelli:0,batt:0,auto:C.auto==='ev',fam:C.persone!=null,pdc:C.risc==='pdc',gas:C.risc==='gas'||C.risc==='altro',stagione:'estate'});
+  const box=el('div','choices');
+  d.o.forEach(([v,l,sub])=>{ const b=bottone(l+(sub?`<small>${sub}</small>`:''),()=>{ C[d.k]=v; if(i+1<DOMANDE.length) domanda(i+1); else gioco(true); },'choice'+(C[d.k]===v?' on':'')); box.append(b); });
+  const nodes=[el('div','step',`2 di 3 · Ancora ${DOMANDE.length-i} ${DOMANDE.length-i===1?'domanda':'domande'}`), el('h2','',d.q), box];
+  nodes.push(bottone('← indietro',()=> i? domanda(i-1) : dove(),'linkbtn back'));
+  mostra(nodes,true);
+}
+
+/* 3 · il gioco */
+function resaPer(kw){ const k=C.casa; if(!k) return undefined; const cf=k.configs;
+  if(cf&&cf.length&&kw){ const c=cf.find(x=>x.kwp>=kw-.01)||cf.at(-1); return Math.round(c.kwh/c.kwp); } return k.resa; }
+function mqCasa(){ const k=C.casa; if(!k||!k.impronta||C.tetto==='no') return undefined; return Math.max(60,Math.min(300,Math.round(k.impronta*(k.piani||2)*.85))); }
+function stato(){ return {tipo:C.tetto==='no'?'apt':'villa', zona:C.zona||'nord', mq:mqCasa(), resa:resaPer(C.up.fv), persone:C.persone, epoca:'media', risc:C.risc, cucina:'gas', auto:C.auto, kwh:null, up:C.up}; }
+function livelli(){ let max=C.casa&&C.casa.maxKwp; if(max!=null) max=Math.min(max,20);  // impianto domestico: oltre 20 kW non ha senso qui
+  if(C.tetto==='no') return [0,1.5,3];
+  if(max==null) return [0,3,6,9];
+  if(max<1.5) return max>=.5? [0,Math.round(max*2)/2] : [0];
+  return [...new Set([0,max/3,max*2/3,max].map(x=>x?Math.max(1.5,Math.round(x*2)/2):0))].sort((a,b)=>a-b); }
+function nomeFv(kw){ const L=livelli(); return `${String(kw).replace('.',',')} kW, circa ${Math.round(kw/.4)} pannelli`+(C.casa&&C.casa.maxKwp&&kw===L.at(-1)&&C.tetto!=='no'?' · tetto pieno':''); }
+const NOME_BATT={5:'5 kWh · basta per una sera normale',10:'10 kWh · copre sera e notte'};
+const parti=x=>Math.max(0,Math.min(10,Math.round(x*10)));
+function stagioni(r){ const inv=[0,1,11].map(i=>r.m[i]), est=[5,6,7].map(i=>r.m[i]);
+  const q=a=>a.reduce((s,x)=>s+x.dallaCasa,0)/a.reduce((s,x)=>s+x.totale,0); return {inv:parti(q(inv)),est:parti(q(est))}; }
+function spiega(r,prima,ultima){
+  const p=parti(r.indip), st=stagioni(r);
+  const combNome=C.risc==='altro'?'il combustibile':'il gas';
+  if(!r.kwp && !r.pdc) return `Senza pannelli tutta l'energia arriva da fuori: la luce dalla rete${r.comb>0?` e, soprattutto, ${combNome} per scaldare`:''}. Prova ad aggiungere qualcosa qui sotto.`;
+  if(ultima==='fv' && r.comb>r.elettrico) return `I pannelli fanno la loro parte d'estate (${st.est} su 10), ma la fetta più grande resta ${combNome} dell'inverno. Lì il sole non arriva finché scaldi bruciando qualcosa.`;
+  if(ultima==='pdc') return C.up.pdc ? `Con la pompa di calore il riscaldamento passa all'elettricità: la caldaia si spegne (resta solo un po' di gas per i fornelli) e i pannelli possono coprire anche una parte del caldo.` : `Senza pompa di calore torni a scaldare con ${combNome}: è la parte di energia che il sole non può coprire.`;
+  if(ultima==='batt') return `La batteria tiene l'energia del pomeriggio per la sera. D'estate la casa arriva a ${st.est} parti su 10.`;
+  if(ultima==='cappotto') return `Una casa che disperde meno ha bisogno di meno energia d'inverno: tutto il resto diventa più facile.`;
+  if(ultima==='wallbox') return `L'auto si carica quando c'è il sole invece che la sera: più energia del tetto usata in casa.`;
+  return `D'estate la casa si fa da sola ${st.est} parti su 10, d'inverno ${st.inv}. ${st.inv<3?'L\'inverno è la parte difficile.':''}`;
+}
+let ultimoAnn='';
+const aggiunte=u=>!!(u.fv||u.batt||u.pdc||u.cappotto||u.wallbox);
+function gioco(focus,ultima){
+  const levOk=livelli(); if(!levOk.includes(C.up.fv)) C.up.fv=Math.max(...levOk.filter(x=>x<=C.up.fv));
+  if(C.auto!=='ev') C.up.wallbox=false; if(C.risc==='pdc') C.up.pdc=false;
+  const r=calcola(stato()), p=parti(r.indip);
+  const nPv=C.up.fv? Math.min(5,Math.max(1,Math.round(C.up.fv/livelli().at(-1)*5))) : 0;
+  scena({pannelli:nPv,batt:C.up.batt/5,auto:C.auto==='ev'||C.up.auto,fam:true,pdc:r.pdc,gas:r.comb>500,stagione:'estate',badge:C.casa&&C.casa.etichetta||null});
+  const dots=el('div','dots'); for(let i=0;i<10;i++) dots.append(el('i',i<p?'on':''));
+  const lev=livelli(), li=lev.indexOf(C.up.fv);
+  const azioni=el('div','choices');
+  const add=(k,titolo,stato,fn,dis)=>{ const b=bottone(`${titolo}<small>${stato}</small>`,()=>{fn(); gioco(false,k); card.querySelector(`[data-k="${k}"]`)?.focus();},'choice'+(stato.startsWith('Sì')||/kW/.test(stato)&&!/^nessun/.test(stato)?' on':'')); b.dataset.k=k; if(dis){b.disabled=true;b.style.opacity=.5;} azioni.append(b); };
+  const prossimo=lev[(li+1)%lev.length];
+  add('fv','Pannelli sul tetto', (C.up.fv? nomeFv(C.up.fv) : 'nessuno')+' · '+(prossimo? 'tocca per metterne di più' : 'tocca per toglierli'), ()=>{ C.up.fv=prossimo; });
+  add('batt','Batteria', (C.up.batt? NOME_BATT[C.up.batt] : 'nessuna')+' · '+(C.up.batt===10? 'tocca per toglierla' : 'tocca per '+(C.up.batt?'una più grande':'aggiungerla')), ()=>{ C.up.batt=({0:5,5:10,10:0})[C.up.batt]; });
+  if(C.risc!=='pdc') add('pdc','Pompa di calore al posto della caldaia', C.up.pdc?'Sì':'No', ()=>{ C.up.pdc=!C.up.pdc; });
+  add('cappotto','Cappotto e finestre nuove', C.up.cappotto?'Sì':'No', ()=>{ C.up.cappotto=!C.up.cappotto; });
+  if(C.auto==='ev') add('wallbox','Ricarica l\'auto quando c\'è il sole', C.up.wallbox?'Sì':'No', ()=>{ C.up.wallbox=!C.up.wallbox; });
+  const frase=spiega(r,false,ultima);
+  const ann=`${p} parti su 10`; if(ann!==ultimoAnn){ ultimoAnn=ann; $('#live').textContent=`La casa si fa da sola ${ann} dell'energia`; }
+  const dett=el('details'); dett.innerHTML=`<summary>Come lo calcoliamo</summary><ul>
+    <li>${C.casa&&C.casa.impronta? `La casa che hai indicato: pianta di circa ${fmt(C.casa.impronta)} m² (${C.casa.fonte})${C.tetto==='no'?'; per il tuo appartamento contiamo 80 m²':`; da scaldare contiamo circa ${fmt(mqCasa())} m²`}.` : `Una casa ${C.tetto==='no'?'in condominio di circa 80 m²':'con tetto suo di circa 140 m²'}.`} ${C.persone} ${C.persone==1?'persona':'persone'}, zona ${({nord:'Nord',centro:'Centro',sud:'Sud'})[C.zona||'nord']}, costruita tra il 1980 e il 2010: l'età della casa non te l'abbiamo chiesta.</li>
+    <li>Energia di un anno: ${fmt(r.elettrico)} kWh di luce${r.comb>0?` e ${fmt(r.comb)} kWh di ${C.risc==='altro'?'combustibile':'gas'}`:''}${r.kwp?`; i pannelli ne producono ${fmt(r.sole)}`:''}.</li>
+    <li>"Parti su 10" = quanta di tutta questa energia arriva dal tuo tetto, contando anche il gas.</li>
+    <li>Partiamo da una casa senza pannelli: se li hai già, la tua situazione di oggi è migliore di quella indicata.</li>
+    <li>${C.casa?'Su quel tetto':'In media'} ${fmt(stato().resa||H.resaKwp[C.zona||'nord'])} kWh all'anno per ogni kW di pannelli, un terzo della luce usata nelle ore di sole, pompa di calore che rende 3 volte l'energia che consuma.</li></ul>`;
+  mostra([
+    el('div','step','3 di 3 · Rendila più indipendente'),
+    el('h2','',`${aggiunte(C.up)?'Con queste aggiunte la tua casa si farebbe':'Senza pannelli, la tua casa si fa'} da sola <span class="big" style="color:var(--green-d)">${p}</span> ${p===1?'parte':'parti'} su 10 dell'energia che usa.`),
+    dots,
+    el('p','say',frase),
+    el('p','small','Tocca per aggiungere e guarda la casa cambiare.'),
+    azioni,
+    bottone('Ho finito, fammi il riassunto',riassunto,'btn'),
+    dett,
+    bottone('← cambia le risposte',()=>domanda(0),'linkbtn back')
+  ],focus);
+}
+
+function riassunto(){
+  const r=calcola(stato()), p=parti(r.indip), st=stagioni(r);
+  const base=calcola({...stato(),up:{fv:0,batt:0,pdc:false,induzione:false,cappotto:false,wallbox:false,auto:false}});
+  const scelte=[]; if(C.up.fv) scelte.push(`${String(C.up.fv).replace('.',',')} kW di pannelli`); if(C.up.batt) scelte.push(`una batteria da ${C.up.batt} kWh`); if(C.up.pdc) scelte.push('la pompa di calore'); if(C.up.cappotto) scelte.push('cappotto e finestre'); if(C.up.wallbox) scelte.push('la ricarica col sole');
+  const att=[];
+  if(r.comb>500 && r.kwp) att.push('Finché scaldi bruciando gas o altro, quella parte di energia resta fuori dalla portata dei pannelli.');
+  if(C.up.pdc) att.push('Con la pompa di calore va controllato che il contatore regga: spesso servono 6 kW.');
+  if(C.up.batt && !C.up.fv) att.push('Una batteria senza pannelli non ha niente da tenere da parte.');
+  mostra([
+    el('div','step','Il tuo riassunto'),
+    el('h2','', scelte.length? `Con ${scelte.length>1? scelte.slice(0,-1).join(', ')+' e '+scelte.at(-1) : scelte[0]}, la casa si farebbe da sola ${p} ${p===1?'parte':'parti'} su 10 dell'energia.` : 'Non hai aggiunto niente: senza pannelli tutta l\'energia arriva da fuori.'),
+    el('p','lead',`D'estate ${st.est} su 10, d'inverno ${st.inv} su 10. Senza pannelli né altri interventi: ${parti(base.indip)} su 10.`),
+    ...(att.length?[el('p','say',att.join(' '))]:[]),
+    el('p','small','È una stima su una casa come la tua, non un preventivo. Con l\'indirizzo useremo il tuo tetto vero, visto dal satellite.'),
+    bottone('← torna a giocare',()=>gioco(true),'btn'),
+    bottone('Ricomincia',()=>location.reload(),'linkbtn back')
+  ],true);
+}
+
+/* info */
+const info=$('#info'), fuori=[$('.top'),$('main')];
+function apri(){info.hidden=false; fuori.forEach(e=>e.inert=true); $('#closeInfo').focus();}
+function chiudi(){info.hidden=true; fuori.forEach(e=>e.inert=false); $('#openInfo').focus();}
+$('#openInfo').onclick=apri; $('#closeInfo').onclick=chiudi;
+info.addEventListener('click',e=>{if(e.target===info)chiudi();});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!info.hidden)chiudi();});
+
+esempio('estate');
+caricaScena().then(()=>{ if(ultimaScena) scena(ultimaScena); });
+window.__k={C,calcola,stato};
+</script>
