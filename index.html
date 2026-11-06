@@ -37,6 +37,7 @@ main{max-width:1100px;margin:0 auto;padding:0 16px 48px;display:grid;gap:18px}
 .stage{background:linear-gradient(180deg,var(--sky1,#DCEBF2),var(--sky2,#F4F3EC));border-radius:22px;overflow:hidden;transition:background .8s}
 .stage .scena svg{display:block;width:100%;height:auto}
 .stage .scena [class^="k-"]{transition:opacity .6s ease}
+#casa3d svg{display:block;width:100%;height:auto}
 .season{position:absolute}
 .badge{position:absolute;left:12px;top:10px;background:rgba(255,255,255,.85);border-radius:999px;padding:4px 12px;font-weight:700;font-size:14px}
 .stage-in{position:relative}
@@ -98,6 +99,7 @@ details ul{padding-left:18px;margin:8px 0 0;color:var(--muted);font-size:15px}
   <div class="stage" id="stage">
     <div class="stage-in">
       <div id="scena" class="scena" role="img" aria-label="Illustrazione della casa con i suoi impianti"></div>
+      <div id="casa3d" hidden></div>
       <div id="mappa" hidden aria-label="Mappa satellitare della casa"></div>
       <div id="mirino" hidden aria-hidden="true"></div>
       <div class="badge" id="badge" hidden></div>
@@ -225,6 +227,8 @@ async function caricaScena(){
 let ultimaScena=null;
 function scena(o){
   ultimaScena=o;
+  const vera=!!(o.reale&&CASA3D); if($('#mappa').hidden){ $('#casa3d').hidden=!vera; $('#scena').hidden=vera; }
+  if(vera) aggiornaCasa(o);
   const n=o.pannelli||0; for(let i=1;i<=5;i++) vis('pv'+i,i<=n);
   vis('batt1',o.batt>=1); vis('batt2',o.batt>=2);
   vis('inv',n>0); vis('ev',!!o.auto); vis('fam',!!o.fam);
@@ -255,6 +259,34 @@ function dentro(pt,poly){ let c=false; for(let i=0,j=poly.length-1;i<poly.length
   if(((yi>pt[0])!==(yj>pt[0])) && (pt[1]<(xj-xi)*(pt[0]-yi)/(yj-yi)+xi)) c=!c; } return c; }
 function arrotonda(x){ return Math.round(x*2)/2; }
 
+function conTempo(pr,ms){ return Promise.race([pr,new Promise((_,ko)=>setTimeout(()=>ko(new Error('tempo')),ms))]); }
+let tileJson=null;
+async function edificioOFM(lat,lon){
+  const [{VectorTile},{default:Pbf}]=await Promise.all([import('https://cdn.jsdelivr.net/npm/@mapbox/vector-tile@1.3.1/+esm'),import('https://cdn.jsdelivr.net/npm/pbf@3.2.1/+esm')]);
+  if(!tileJson) tileJson=await (await fetch('https://tiles.openfreemap.org/planet')).json();
+  const z=14, [fx,fy]=tileXY(lat,lon,z), x=Math.floor(fx), y=Math.floor(fy);
+  const r=await fetch(tileJson.tiles[0].replace('{z}',z).replace('{x}',x).replace('{y}',y)); if(!r.ok) return null;
+  const layer=new VectorTile(new Pbf(await r.arrayBuffer())).layers.building; if(!layer) return null;
+  const cand=[];
+  for(let i=0;i<layer.length;i++){ const f=layer.feature(i); if(f.type!==3) continue; const ext=f.extent, pr=f.properties;
+    let cur=null, segnoEst=0;
+    f.loadGeometry().forEach(ring=>{ if(ring.length<4) return;
+      let a=0; ring.forEach((p,j)=>{const q=ring[(j+1)%ring.length]; a+=p.x*q.y-q.x*p.y;});
+      if(!segnoEst) segnoEst=Math.sign(a);
+      const poly=ring.map(pt=>tileLL(x+pt.x/ext,y+pt.y/ext,z));
+      const taglio=ring.some(pt=>pt.x<=0||pt.y<=0||pt.x>=ext||pt.y>=ext);   // tagliato al bordo del tile
+      if(Math.sign(a)===segnoEst){ cur={poly,holes:[],taglio,tags:{altezza:pr.render_height,base:pr.render_min_height}}; cand.push(cur); }
+      else if(cur){ cur.holes.push(poly); cur.taglio=cur.taglio||taglio; } }); }
+  if(!cand.length) return null;
+  let b=cand.find(c=>dentro([lat,lon],c.poly));
+  if(!b){ const d=c=>{const m=c.poly.reduce((s,p)=>[s[0]+p[0],s[1]+p[1]],[0,0]).map(v=>v/c.poly.length); return (m[0]-lat)**2+(m[1]-lon)**2;};
+    b=cand.sort((p,q)=>d(p)-d(q))[0]; if(d(b)>(30/111000)**2) return null; }
+  if(b.taglio) return {taglio:true, parziale:b};
+  const impronta=areaPoligono(b.poly)-b.holes.reduce((s,h)=>s+areaPoligono(h),0);
+  const alt=+b.tags.altezza, piani=alt&&alt!==5? Math.max(1,Math.round((alt-(+b.tags.base||0))/3)) : null;   // 5 m = valore di default, altezza ignota
+  const condominio=(piani||0)>=4 || impronta>450;
+  return {poly:b.poly, holes:b.holes, impronta, piani, condominio, maxKwp:arrotonda(impronta*QUOTA_TETTO_UTILE*KWP_PER_M2), resa:resaDaLat(lat), fonte:'OpenStreetMap'};
+}
 const OSM={
   nome:'OpenStreetMap',
   async cerca(testo){
@@ -265,8 +297,16 @@ const OSM={
     return {lat:+j[0].lat, lon:+j[0].lon, etichetta:[via,com].filter(Boolean).join(', ')||j[0].display_name};
   },
   async edificio(lat,lon){
-    const q=`[out:json][timeout:15];way(around:30,${lat},${lon})["building"];out tags geom;`;
-    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)}); if(!r.ok) throw new Error('edificio');
+    // prima i tile vettoriali di OpenFreeMap (veloci, con altezza), poi Overpass come riserva
+    let parziale=null;
+    try{ const t=await conTempo(edificioOFM(lat,lon),9000); if(t&&!t.taglio) return t; if(t&&t.taglio) parziale=t.parziale; }catch(e){ console.warn('OFM',e); }
+    try{ const o=await this.edificioOverpass(lat,lon); if(o) return o; }catch(e){ console.warn('Overpass',e); }
+    if(parziale){ const imp=areaPoligono(parziale.poly); return {poly:parziale.poly, holes:parziale.holes, impronta:imp, piani:null, condominio:imp>450, maxKwp:arrotonda(imp*QUOTA_TETTO_UTILE*KWP_PER_M2), resa:resaDaLat(lat), fonte:'OpenStreetMap', avviso:'Il contorno di questa casa potrebbe essere incompleto: se la sagoma non torna, tocca un altro punto del tetto.'}; }
+    return null;
+  },
+  async edificioOverpass(lat,lon){
+    const q=`[out:json][timeout:10];way(around:30,${lat},${lon})["building"];out tags geom;`;
+    const r=await conTempo(fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q)}),12000); if(!r.ok) throw new Error('edificio');
     const j=await r.json();
     const cand=(j.elements||[]).filter(w=>w.geometry&&w.geometry.length>3).map(w=>({poly:w.geometry.map(g=>[g.lat,g.lon]),tags:w.tags||{}}));
     if(!cand.length) return null;
@@ -329,7 +369,7 @@ function caricaLeaflet(){ if(GOOGLE_KEY||window.L) return Promise.resolve(); if(
   return leafletPronto; }
 
 let richiesta=0, ultimaRicerca=0;
-function mostraMappa(on){ $('#mappa').hidden=!on; $('#mirino').hidden=!on; $('#scena').hidden=on; }
+function mostraMappa(on){ $('#mappa').hidden=!on; $('#mirino').hidden=!on; $('#scena').hidden=on; $('#casa3d').hidden=true; }
 function centroMappa(){ const d=$('#mappa'); if(d._map){ const c=d._map.getCenter(); return [c.lat,c.lng]; } if(d._gmap){ const c=d._gmap.getCenter(); return [c.lat(),c.lng()]; } return null; }
 
 function dove(){
@@ -359,9 +399,10 @@ async function trovaEdificio(lat,lon,etichetta,id){
   const msg=$('#addrMsg'); if(msg) msg.textContent='Guardo il tetto dal satellite…';
   let e=null; try{ e=await MAPPA.edificio(lat,lon); }catch(err){ e=null; }
   if(id!==richiesta) return;
-  C.casa={lat,lon,etichetta:etichetta||(C.casa&&C.casa.etichetta)||'', poly:e&&e.poly, impronta:e&&e.impronta, piani:e&&e.piani, maxKwp:e&&e.maxKwp, resa:(e&&e.resa)||resaDaLat(lat), configs:e&&e.configs, avviso:e&&e.avviso, ore:e&&e.ore, fonte:e?e.fonte:null};
+  C.casa={lat,lon,etichetta:etichetta||(C.casa&&C.casa.etichetta)||'', poly:e&&e.poly, impronta:e&&e.impronta, piani:e&&e.piani, maxKwp:e&&e.maxKwp, resa:(e&&e.resa)||resaDaLat(lat), holes:(e&&e.holes)||[], configs:e&&e.configs, avviso:e&&e.avviso, ore:e&&e.ore, fonte:e?e.fonte:null};
   C.tetto=e? (e.condominio?'no':'si') : null;
   C.zona=zonaDaLat(lat);
+  costruisciCasa(C.casa);   // senza contorno azzera la ricostruzione precedente
   dove();
 }
 function scegliPunto(lat,lon){ trovaEdificio(lat,lon,null); }
@@ -369,16 +410,156 @@ function confermaCasa(){
   const k=C.casa, box=el('div','trovata');
   if(k.impronta){
     box.innerHTML=`<p class="say">Abbiamo trovato un edificio di circa <b>${fmt(k.impronta)} m²</b> di pianta${k.piani?` su ${k.piani} piani`:''}.
-      ${C.tetto==='no' ? 'Sembra un condominio: il tetto è di tutti.' : `Sul tetto ci stanno fino a circa <b>${String(Math.min(k.maxKwp,20)).replace('.',',')} kW</b> di pannelli, cioè circa ${Math.round(Math.min(k.maxKwp,20)/.4)} pannelli${k.maxKwp>20?' (oltre non ha senso per una casa)':''}.`}
+      ${C.tetto==='no' ? 'Sembra un condominio: il tetto è di tutti.' : `Sul tetto ci stanno fino a circa <b>${String(Math.min(k.maxKwp,20)).replace('.',',')} kW</b> di pannelli, cioè circa ${Math.round(Math.min(k.maxKwp,20)/.43)} pannelli${k.maxKwp>20?' (oltre non ha senso per una casa)':''}.`}
       Qui ogni kW di pannelli produce circa <b>${fmt(k.resa)} kWh</b> in un anno.</p>
       <p class="small">È evidenziato in giallo sulla mappa. Se non è la tua casa, toccala sulla mappa, oppure spostala sotto il + al centro e usa il pulsante qui sopra.</p>`;
   } else {
     box.innerHTML=`<p class="say">Abbiamo trovato il punto, ma non il contorno della casa. Toccala sulla mappa, oppure vai avanti: useremo una casa media.</p>`;
   }
   if(k.avviso) box.append(el('p','small',k.avviso));
-  const seg=el('div','choices'); seg.append(bottone('Sì, è la mia casa →',()=>{ richiesta++; if(!C.tetto) C.tetto='si'; mostraMappa(false); domanda(0); },'btn'));
-  { const alt=bottone(C.tetto==='no'?'Ho un tetto mio, non è un condominio':'Vivo in un appartamento, il tetto non è mio',()=>{ C.tetto=C.tetto==='no'?'si':'no'; dove(); },'linkbtn back'); seg.append(alt); }
+  const seg=el('div','choices'); seg.append(bottone('Sì, è la mia casa →',()=>{ richiesta++; if(!C.tetto) C.tetto='si'; mostraMappa(false); costruisciCasa(C.casa); domanda(0); },'btn'));
+  { const alt=bottone(C.tetto==='no'?'Ho un tetto mio, non è un condominio':'Vivo in un appartamento, il tetto non è mio',()=>{ C.tetto=C.tetto==='no'?'si':'no'; if(C.casa.poly) costruisciCasa(C.casa); dove(); },'linkbtn back'); seg.append(alt); }
   box.append(seg); return box;
+}
+
+/* ============ LA TUA CASA RICOSTRUITA ============
+   Dal contorno reale: pareti estruse in assonometria, foto satellitare proiettata su terreno e tetto,
+   impianti posati sopra e intorno. Coordinate locali in metri: u verso est, v verso nord.
+   Si guarda da sud-est: il nord va in alto a destra, l'est in basso a destra; si vedono le pareti a sud e a est. */
+const C3={W:600,H:400};
+const TILE='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/';
+function locale(lat0,lon0){ const ku=111320*Math.cos(lat0*Math.PI/180), kv=110540;
+  return {uv:(lat,lon)=>[(lon-lon0)*ku,(lat-lat0)*kv], ll:(u,v)=>[lat0+v/kv, lon0+u/ku]}; }
+function tileXY(lat,lon,z){ const n=2**z, x=(lon+180)/360*n, r=lat*Math.PI/180, y=(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n; return [x,y]; }
+function tileLL(x,y,z){ const n=2**z, lon=x/n*360-180, lat=Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI; return [lat,lon]; }
+
+let CASA3D=null;   // {svg, pr, el:{...}}
+function costruisciCasa(k){
+  const box=$('#casa3d'); box.innerHTML='';
+  if(!k||!k.poly||k.poly.length<3){ CASA3D=null; return false; }
+  const lat0=k.poly.reduce((s,p)=>s+p[0],0)/k.poly.length, lon0=k.poly.reduce((s,p)=>s+p[1],0)/k.poly.length;
+  const L=locale(lat0,lon0);
+  let pts=k.poly.map(p=>L.uv(p[0],p[1]));
+  if(pts.length>3 && Math.hypot(pts[0][0]-pts.at(-1)[0],pts[0][1]-pts.at(-1)[1])<.01) pts=pts.slice(0,-1);
+  // orientamento antiorario, per sapere da che parte guarda ogni parete
+  const fori=(k.holes||[]).map(hh=>hh.map(p=>L.uv(p[0],p[1])));   // cortili
+  let a2=0; pts.forEach((p,i)=>{const q=pts[(i+1)%pts.length]; a2+=p[0]*q[1]-q[0]*p[1];}); if(a2<0) pts.reverse();
+  const piani=Math.min(13,k.pianiScelti||k.piani||(C.tetto==='no'?4:2));
+  const h=Math.min(40,piani*3+.4);
+  // inquadratura: casa + 14 m intorno
+  const us=pts.map(p=>p[0]), vs=pts.map(p=>p[1]);
+  const M=Math.max(5,Math.min(12,Math.sqrt(k.impronta||100)*.6)), u0=Math.min(...us)-M, u1=Math.max(...us)+M, v0=Math.min(...vs)-M, v1=Math.max(...vs)+M;
+  const R=(u,v)=>[(u+v)*.7071, (u-v)*.3536];           // rotazione + schiacciamento
+  const corn=[[u0,v0],[u1,v0],[u1,v1],[u0,v1]].map(([u,v])=>R(u,v));
+  const xs=corn.map(c=>c[0]), ys=corn.map(c=>c[1]);
+  const KZ=.82;                                        // scala verticale
+  const spanX=Math.max(...xs)-Math.min(...xs), spanY=Math.max(...ys)-Math.min(...ys)+h*KZ+3;
+  const S=Math.min((C3.W-30)/spanX,(C3.H-40)/spanY);
+  const TX=C3.W/2-(Math.max(...xs)+Math.min(...xs))/2*S, TY=C3.H-18-Math.max(...ys)*S;
+  const pr=(u,v,z=0)=>{ const r=R(u,v); return [TX+r[0]*S, TY+r[1]*S-z*KZ*S]; };
+  const P=a=>a.map(p=>pr(...p).map(n=>n.toFixed(1)).join(',')).join(' ');
+  const svg=document.createElementNS(NS,'svg'); svg.setAttribute('viewBox',`0 0 ${C3.W} ${C3.H}`); svg.setAttribute('role','img');
+  svg.setAttribute('aria-label','La tua casa ricostruita dal satellite'); box.append(svg);
+  const add=(tag,at,par)=>{ const e=document.createElementNS(NS,tag); for(const x in at) e.setAttribute(x,at[x]); (par||svg).append(e); return e; };
+  const defs=add('defs',{});
+  // foto satellitare: tessere z19 che coprono l'inquadratura, trasformate in assonometria
+  const z=19, [tx0,ty0]=tileXY(L.ll(u0,v1)[0],L.ll(u0,v1)[1],z), [tx1,ty1]=tileXY(L.ll(u1,v0)[0],L.ll(u1,v0)[1],z);
+  function foto(par,zq){ for(let x=Math.floor(tx0);x<=Math.floor(tx1);x++) for(let y=Math.floor(ty0);y<=Math.floor(ty1);y++){
+      const o=L.uv(...tileLL(x,y,z)), ex=L.uv(...tileLL(x+1,y,z)), ey=L.uv(...tileLL(x,y+1,z));
+      const du=[(ex[0]-o[0])/256,(ex[1]-o[1])/256], dv=[(ey[0]-o[0])/256,(ey[1]-o[1])/256];
+      const A=pr(o[0]+du[0],o[1]+du[1],zq), B=pr(o[0]+dv[0],o[1]+dv[1],zq), O=pr(o[0],o[1],zq);
+      add('image',{href:`${TILE}${z}/${y}/${x}`,width:257,height:257,preserveAspectRatio:'none',
+        transform:`matrix(${A[0]-O[0]} ${A[1]-O[1]} ${B[0]-O[0]} ${B[1]-O[1]} ${O[0]} ${O[1]})`},par); } }
+  // piattaforma: terreno vero dentro un bordo verde, come nell'illustrazione
+  const g0=[[u0,v0],[u1,v0],[u1,v1],[u0,v1]];
+  add('polygon',{points:P([[u0,v0,0],[u1,v0,0],[u1,v0,-1.6],[u0,v0,-1.6]]),fill:'#1D6E46'});
+  add('polygon',{points:P([[u1,v0,0],[u1,v1,0],[u1,v1,-1.6],[u1,v0,-1.6]]),fill:'#1D6E46'});
+  const cpG=add('clipPath',{id:'cg'},defs); add('polygon',{points:P(g0.map(p=>[...p,0]))},cpG);
+  const gG=add('g',{'clip-path':'url(#cg)'}); add('polygon',{points:P(g0.map(p=>[...p,0])),fill:'#279E67'},gG); foto(gG,0);
+  add('polygon',{points:P(g0.map(p=>[...p,0])),fill:'#279E67',opacity:.28},gG);
+  // ombra della casa
+  add('polygon',{points:P(pts.map(([u,v])=>[u-h*.15,v+h*.45,0])),fill:'#000',opacity:.18});
+  const dietro=add('g',{}), casa=add('g',{}), davanti=add('g',{});
+  // pareti visibili (normale verso sud-est), dalla più lontana
+  const pareti=[];
+  pts.forEach((p,i)=>{ const q=pts[(i+1)%pts.length], nx=q[1]-p[1], ny=-(q[0]-p[0]);
+    if(nx-ny<=0) return; const len=Math.hypot(nx,ny), luce=(nx*.4-ny*.8)/len;
+    pareti.push({p,q,d:pr((p[0]+q[0])/2,(p[1]+q[1])/2)[1],luce}); });
+  pareti.sort((a,b)=>a.d-b.d).forEach(w=>{
+    const c=Math.round(205+w.luce*30); add('polygon',{points:P([[...w.p,0],[...w.q,0],[...w.q,h],[...w.p,h]]),fill:`rgb(${c},${c+4},${c+6})`,stroke:'#8E9BA1','stroke-width':.6},casa);
+    const lw=Math.hypot(w.q[0]-w.p[0],w.q[1]-w.p[1]), n=Math.floor(lw/3.2);   // una finestra ogni 3 m circa, per piano
+    for(let f=0;f<piani;f++) for(let j=0;j<n;j++){ const t0=(j+.35)/n, t1=(j+.65)/n, za=f*3+.9, zb=f*3+2.3;
+      const A=[w.p[0]+(w.q[0]-w.p[0])*t0, w.p[1]+(w.q[1]-w.p[1])*t0], B=[w.p[0]+(w.q[0]-w.p[0])*t1, w.p[1]+(w.q[1]-w.p[1])*t1];
+      add('polygon',{points:P([[...A,za],[...B,za],[...B,zb],[...A,zb]]),fill:'#A9C6D2',stroke:'#4B565B','stroke-width':.6},casa); } });
+  // tetto: la foto vera, ritagliata sul contorno all'altezza della gronda
+  const cpR=add('clipPath',{id:'cr'},defs);
+  add('path',{d:[pts,...fori].map(poly=>'M'+P(poly.map(p=>[...p,h])).replace(/ /g,' L')+'Z').join(' '),'clip-rule':'evenodd'},cpR);
+  const gR=add('g',{'clip-path':'url(#cr)'},casa); add('polygon',{points:P(pts.map(p=>[...p,h])),fill:'#C9A27A'},gR); foto(gR,h);
+  add('polygon',{points:P(pts.map(p=>[...p,h])),fill:'none',stroke:'#EFC44C','stroke-width':2.2},casa);
+  // posti per i pannelli: griglia allineata al lato più lungo, dal lato sud in su
+  let lung=0, ang=0; pts.forEach((p,i)=>{const q=pts[(i+1)%pts.length], l=Math.hypot(q[0]-p[0],q[1]-p[1]); if(l>lung){lung=l; ang=Math.atan2(q[1]-p[1],q[0]-p[0]);}});
+  const ca=Math.cos(ang), sa=Math.sin(ang), cx=us.reduce((s,x)=>s+x,0)/us.length, cy=vs.reduce((s,x)=>s+x,0)/vs.length;
+  const loc=(a,b)=>[cx+a*ca-b*sa, cy+a*sa+b*ca];
+  const pw=1.75, ph=1.1;
+  const inPoly=(u,v,poly)=>{ let c=false; for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const [xi,yi]=poly[i],[xj,yj]=poly[j]; if(((yi>v)!==(yj>v))&&(u<(xj-xi)*(v-yi)/(yj-yi)+xi)) c=!c; } return c; };
+  const dentroR=(u,v)=>inPoly(u,v,pts)&&!fori.some(f=>inPoly(u,v,f));
+  const lati=[pts,...fori].flatMap(poly=>poly.map((p,i)=>[p,poly[(i+1)%poly.length]]));
+  const taglia=(p1,p2,p3,p4)=>{ const d=(a,b,c)=>(c[0]-a[0])*(b[1]-a[1])-(c[1]-a[1])*(b[0]-a[0]); return d(p3,p4,p1)*d(p3,p4,p2)<0 && d(p1,p2,p3)*d(p1,p2,p4)<0; };
+  // estensione della pianta nel riferimento della casa, per non scandire un quadrato inutile
+  const rif=pts.map(([u,v])=>[(u-cx)*ca+(v-cy)*sa, -(u-cx)*sa+(v-cy)*ca]);
+  const A0=Math.min(...rif.map(r=>r[0])), A1=Math.max(...rif.map(r=>r[0])), B0=Math.min(...rif.map(r=>r[1])), B1=Math.max(...rif.map(r=>r[1]));
+  const slot=[];
+  for(let b=B0+.5;b<B1-ph && slot.length<400;b+=ph+.08) for(let a=A0+.5;a<A1-pw && slot.length<400;a+=pw+.08){
+    const q=[loc(a,b),loc(a+pw,b),loc(a+pw,b+ph),loc(a,b+ph)];
+    const m=[loc(a-.5,b-.5),loc(a+pw+.5,b-.5),loc(a+pw+.5,b+ph+.5),loc(a-.5,b+ph+.5)];   // con 50 cm di margine
+    const ok=m.every(([u,v])=>dentroR(u,v)) && !m.some((p,i)=>{const p2=m[(i+1)%4]; return lati.some(([e1,e2])=>taglia(p,p2,e1,e2));});
+    if(ok) slot.push({q,a,b}); }
+  // falda scelta: colmo lungo il lato lungo; si prende il lato con la normale più verso sud,
+  // e se le due falde guardano est e ovest si prende ovest. Si riempie dalla gronda verso il colmo.
+  const nb=[-sa,ca];                                   // direzione "b" in coordinate est/nord
+  let lato=nb[1]<0?1:-1;                               // lato con normale verso sud
+  if(Math.abs(nb[1])<.35) lato=nb[0]<0?1:-1;           // falde est/ovest: ovest
+  slot.sort((x,y)=>(y.b-x.b)*lato || Math.abs(x.a+pw/2)-Math.abs(y.a+pw/2));
+  // tetto piano (edificio alto o molto grande): tutto; tetto a falde: la falda migliore, cioè metà
+  const piano=piani>=4||(k.impronta||0)>450;
+  const usabili=Math.min(piano?slot.length:Math.ceil(slot.length/2), Math.floor(20/.43));
+  if(k.fonte!=='Google Solar API') k.maxKwp=Math.floor(usabili*.43*2)/2;
+  const pv=slot.slice(0,usabili).map(sl=>{ const gp=add('g',{opacity:0},casa); gp.style.transition='opacity .4s';
+    add('polygon',{points:P(sl.q.map(p=>[...p,h+.25])),fill:'#2F5D8C',stroke:'#8CCBEA','stroke-width':.7},gp); return gp; });
+  // camino con fumo, se si brucia combustibile
+  const gas=add('g',{opacity:0},casa); gas.style.transition='opacity .5s';
+  { const [a,b]=loc(lung*.18,-lato*1.8); boxL(gas,a,b,.8,.8,h,h+1.6,{l:'#C9A28A',r:'#A9826A',t:'#6B5446'},pr,add);
+    const top=pr(a+.4,b+.4,h+1.9); [[0,0,4],[5,-12,6],[11,-25,8]].forEach(([dx,dy,r])=>add('circle',{cx:top[0]+dx,cy:top[1]+dy,r,fill:'#D5D8DA',opacity:.75},gas)); }
+  // punto davanti alla casa: il vertice più vicino a chi guarda, e la direzione verso l'esterno
+  const F=pts.reduce((m,p)=>pr(...p)[1]>pr(...m)[1]?p:m,pts[0]);
+  let d=[F[0]-cx,F[1]-cy]; const dl=Math.hypot(...d)||1; d=[d[0]/dl,d[1]/dl]; const pp=[-d[1],d[0]];
+  const at=(k1,k2)=>[F[0]+d[0]*k1+pp[0]*k2, F[1]+d[1]*k1+pp[1]*k2];
+  const el3=(n)=>{ const e=add('g',{opacity:0},n>0?davanti:dietro); e.style.transition='opacity .5s'; return e; };
+  // pompa di calore
+  const pdc=el3(1); { const [a,b]=at(1.6,2.2); boxL(pdc,a,b,1.1,.6,0,1,{l:'#F4F6F6',r:'#D5DBDD',t:'#FFFFFF'},pr,add); const c=pr(a+.55,b,.5); add('circle',{cx:c[0],cy:c[1],r:S*.28,fill:'#9FAAAE'},pdc); }
+  // batterie a parete, sulla parete più vicina
+  const batt=[1,2].map(i=>{ const e=el3(1); const w=pareti.at(-1); if(!w) return e; const t=.25+i*.12;
+    const A=[w.p[0]+(w.q[0]-w.p[0])*t, w.p[1]+(w.q[1]-w.p[1])*t], B=[w.p[0]+(w.q[0]-w.p[0])*(t+.09), w.p[1]+(w.q[1]-w.p[1])*(t+.09)];
+    add('polygon',{points:P([[...A,.4],[...B,.4],[...B,1.9],[...A,1.9]]),fill:'#8BC34A',stroke:'#6E9E36','stroke-width':.8},e); return e; });
+  // auto e colonnina
+  const auto=el3(1); { const [a,b]=at(5.5,-3); boxL(auto,a,b,4.2,1.8,.3,1.1,{l:'#5E86A8',r:'#46698A',t:'#7FA3C2'},pr,add); boxL(auto,a+.9,b+.15,2.2,1.5,1.1,1.75,{l:'#2F3E4C',r:'#26323D',t:'#5E86A8'},pr,add); }
+  const wb=el3(1); { const [a,b]=at(3.6,-4.4); boxL(wb,a,b,.4,.35,0,1.8,{l:'#5BC0EB',r:'#3FA3CE',t:'#E8F6FC'},pr,add); }
+  CASA3D={svg,pv,gas,pdc,batt,auto,wb,piani,maxPannelli:usabili};
+  return true;
+}
+function boxL(par,u,v,w,dp,z0,z1,c,pr,add){ // scatola allineata a nord/est: facce sud, est e sopra
+  const P=a=>a.map(p=>pr(...p).map(n=>n.toFixed(1)).join(',')).join(' ');
+  add('polygon',{points:P([[u+w,v,z0],[u+w,v+dp,z0],[u+w,v+dp,z1],[u+w,v,z1]]),fill:c.l,stroke:'#7D898E','stroke-width':.5},par);
+  add('polygon',{points:P([[u,v,z0],[u+w,v,z0],[u+w,v,z1],[u,v,z1]]),fill:c.r,stroke:'#7D898E','stroke-width':.5},par);
+  add('polygon',{points:P([[u,v,z1],[u+w,v,z1],[u+w,v+dp,z1],[u,v+dp,z1]]),fill:c.t,stroke:'#7D898E','stroke-width':.5},par);
+}
+function aggiornaCasa(o){
+  if(!CASA3D) return;
+  const n=Math.min(CASA3D.pv.length,Math.round((o.kwp||0)/.43));     // un pannello da 430 W ogni posto
+  CASA3D.pv.forEach((g,i)=>g.setAttribute('opacity',i<n?1:0));
+  CASA3D.gas.setAttribute('opacity',o.gas?1:0); CASA3D.pdc.setAttribute('opacity',o.pdc?1:0);
+  CASA3D.batt.forEach((g,i)=>g.setAttribute('opacity',i<(o.batt||0)?1:0));
+  CASA3D.auto.setAttribute('opacity',o.auto?1:0); CASA3D.wb.setAttribute('opacity',o.auto&&o.wallbox?1:0);
 }
 
 /* ============ PERCORSO ============ */
@@ -417,10 +598,11 @@ const DOMANDE=[
 ];
 function domanda(i){
   const d=DOMANDE[i];
-  scena({pannelli:0,batt:0,auto:C.auto==='ev',fam:C.persone!=null,pdc:C.risc==='pdc',gas:C.risc==='gas'||C.risc==='altro',stagione:'estate'});
+  scena({reale:true,pannelli:0,kwp:0,batt:0,auto:C.auto==='ev',fam:C.persone!=null,pdc:C.risc==='pdc',gas:C.risc==='gas'||C.risc==='altro',stagione:'estate'});
   const box=el('div','choices');
   d.o.forEach(([v,l,sub])=>{ const b=bottone(l+(sub?`<small>${sub}</small>`:''),()=>{ C[d.k]=v; if(i+1<DOMANDE.length) domanda(i+1); else gioco(true); },'choice'+(C[d.k]===v?' on':'')); box.append(b); });
   const nodes=[el('div','step',`2 di 3 · Ancora ${DOMANDE.length-i} ${DOMANDE.length-i===1?'domanda':'domande'}`), el('h2','',d.q), box];
+  if(i===0&&CASA3D) nodes.unshift(bottone(`Questa è la tua casa ricostruita dal satellite, con ${CASA3D.piani} ${CASA3D.piani===1?'piano':'piani'}. Non sono ${CASA3D.piani}? Tocca per cambiare`,()=>{ C.casa.pianiScelti=CASA3D.piani%6+1; costruisciCasa(C.casa); domanda(0); },'linkbtn back'));
   nodes.push(bottone('← indietro',()=> i? domanda(i-1) : dove(),'linkbtn back'));
   mostra(nodes,true);
 }
@@ -428,14 +610,14 @@ function domanda(i){
 /* 3 · il gioco */
 function resaPer(kw){ const k=C.casa; if(!k) return undefined; const cf=k.configs;
   if(cf&&cf.length&&kw){ const c=cf.find(x=>x.kwp>=kw-.01)||cf.at(-1); return Math.round(c.kwh/c.kwp); } return k.resa; }
-function mqCasa(){ const k=C.casa; if(!k||!k.impronta||C.tetto==='no') return undefined; return Math.max(60,Math.min(300,Math.round(k.impronta*(k.piani||2)*.85))); }
+function mqCasa(){ const k=C.casa; if(!k||!k.impronta||C.tetto==='no') return undefined; return Math.max(60,Math.min(300,Math.round(k.impronta*(k.pianiScelti||k.piani||2)*.85))); }
 function stato(){ return {tipo:C.tetto==='no'?'apt':'villa', zona:C.zona||'nord', mq:mqCasa(), resa:resaPer(C.up.fv), persone:C.persone, epoca:'media', risc:C.risc, cucina:'gas', auto:C.auto, kwh:null, up:C.up}; }
 function livelli(){ let max=C.casa&&C.casa.maxKwp; if(max!=null) max=Math.min(max,20);  // impianto domestico: oltre 20 kW non ha senso qui
-  if(C.tetto==='no') return [0,1.5,3];
+  if(C.tetto==='no'){ const m=max==null?3:Math.min(3,max); return m>=1.5?[0,1.5,m]:m>=.5?[0,Math.round(m*2)/2]:[0]; }
   if(max==null) return [0,3,6,9];
   if(max<1.5) return max>=.5? [0,Math.round(max*2)/2] : [0];
   return [...new Set([0,max/3,max*2/3,max].map(x=>x?Math.max(1.5,Math.round(x*2)/2):0))].sort((a,b)=>a-b); }
-function nomeFv(kw){ const L=livelli(); return `${String(kw).replace('.',',')} kW, circa ${Math.round(kw/.4)} pannelli`+(C.casa&&C.casa.maxKwp&&kw===L.at(-1)&&C.tetto!=='no'?' · tetto pieno':''); }
+function nomeFv(kw){ const L=livelli(); return `${String(kw).replace('.',',')} kW, circa ${Math.round(kw/.43)} pannelli`+(C.casa&&C.casa.maxKwp&&kw===L.at(-1)&&C.tetto!=='no'?' · tetto pieno':''); }
 const NOME_BATT={5:'5 kWh · basta per una sera normale',10:'10 kWh · copre sera e notte'};
 const parti=x=>Math.max(0,Math.min(10,Math.round(x*10)));
 function stagioni(r){ const inv=[0,1,11].map(i=>r.m[i]), est=[5,6,7].map(i=>r.m[i]);
@@ -458,7 +640,7 @@ function gioco(focus,ultima){
   if(C.auto!=='ev') C.up.wallbox=false; if(C.risc==='pdc') C.up.pdc=false;
   const r=calcola(stato()), p=parti(r.indip);
   const nPv=C.up.fv? Math.min(5,Math.max(1,Math.round(C.up.fv/livelli().at(-1)*5))) : 0;
-  scena({pannelli:nPv,batt:C.up.batt/5,auto:C.auto==='ev'||C.up.auto,fam:true,pdc:r.pdc,gas:r.comb>500,stagione:'estate',badge:C.casa&&C.casa.etichetta||null});
+  scena({reale:true,kwp:C.up.fv,wallbox:C.up.wallbox,pannelli:nPv,batt:C.up.batt/5,auto:C.auto==='ev'||C.up.auto,fam:true,pdc:r.pdc,gas:r.comb>500,stagione:'estate',badge:C.casa&&C.casa.etichetta||null});
   const dots=el('div','dots'); for(let i=0;i<10;i++) dots.append(el('i',i<p?'on':''));
   const lev=livelli(), li=lev.indexOf(C.up.fv);
   const azioni=el('div','choices');
@@ -479,7 +661,7 @@ function gioco(focus,ultima){
     <li>${C.casa?'Su quel tetto':'In media'} ${fmt(stato().resa||H.resaKwp[C.zona||'nord'])} kWh all'anno per ogni kW di pannelli, un terzo della luce usata nelle ore di sole, pompa di calore che rende 3 volte l'energia che consuma.</li></ul>`;
   mostra([
     el('div','step','3 di 3 · Rendila più indipendente'),
-    el('h2','',`${aggiunte(C.up)?'Con queste aggiunte la tua casa si farebbe':'Senza pannelli, la tua casa si fa'} da sola <span class="big" style="color:var(--green-d)">${p}</span> ${p===1?'parte':'parti'} su 10 dell'energia che usa.`),
+    el('h2','',`${aggiunte(C.up)?'Con queste aggiunte la tua casa si farebbe':'Senza pannelli, la tua casa si fa'} da sola <span class="big" style="color:var(--green-d)">${p===0&&r.indip>0?'meno di 1':p}</span> ${p===1?'parte':'parti'} su 10 dell'energia che usa.`),
     dots,
     el('p','say',frase),
     el('p','small','Tocca per aggiungere e guarda la casa cambiare.'),
@@ -500,7 +682,7 @@ function riassunto(){
   if(C.up.batt && !C.up.fv) att.push('Una batteria senza pannelli non ha niente da tenere da parte.');
   mostra([
     el('div','step','Il tuo riassunto'),
-    el('h2','', scelte.length? `Con ${scelte.length>1? scelte.slice(0,-1).join(', ')+' e '+scelte.at(-1) : scelte[0]}, la casa si farebbe da sola ${p} ${p===1?'parte':'parti'} su 10 dell'energia.` : 'Non hai aggiunto niente: senza pannelli tutta l\'energia arriva da fuori.'),
+    el('h2','', scelte.length? `Con ${scelte.length>1? scelte.slice(0,-1).join(', ')+' e '+scelte.at(-1) : scelte[0]}, la casa si farebbe da sola ${p===0&&r.indip>0?'meno di 1':p} ${p===1?'parte':'parti'} su 10 dell'energia.` : 'Non hai aggiunto niente: senza pannelli tutta l\'energia arriva da fuori.'),
     el('p','lead',`D'estate ${st.est} su 10, d'inverno ${st.inv} su 10. Senza pannelli né altri interventi: ${parti(base.indip)} su 10.`),
     ...(att.length?[el('p','say',att.join(' '))]:[]),
     el('p','small','È una stima su una casa come la tua, non un preventivo. Con l\'indirizzo useremo il tuo tetto vero, visto dal satellite.'),
