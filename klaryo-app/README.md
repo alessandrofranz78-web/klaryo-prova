@@ -128,6 +128,16 @@ Bianchi non è assegnata all'avvio: conferma, consenso e assegnazione si fanno n
 
 `npm run typecheck` è `tsc --noEmit`.
 
+## Dimostrazione statica pubblica
+
+`npm run build:static-demo` produce `dist-static-demo/` senza il server. È un altro comando rispetto a `npm run build` e a `npm start`. Non accende Express, non legge segreti e non può impostare `NODE_ENV=production`.
+
+Il pacchetto va messo su un host statico con `index.html` nella radice del sito o della cartella. Gli asset sono relativi (`./assets/`). Le pagine usano l'hash, per esempio `https://sottodominio-isolato/#/famiglie/lead_bianchi_demo`. Non serve un rewrite delle route. Non va aperto come file locale se il browser blocca i moduli.
+
+Dentro la pagina il ruolo si cambia a vista: è una simulazione, non un login. I dati restano nel browser. Il pulsante «Azzera dimostrazione» ripristina Bianchi e Verdi. Non ci sono caricamenti di documenti né invii esterni. Le imprese in elenco sono inventate.
+
+Il server autenticato e il rifiuto di `NODE_ENV=production` restano com'erano.
+
 ## Anteprima nell'agente Cursor
 
 Non esiste un URL pubblico dell'app. L'anteprima supportata è il desktop remoto di questo cloud agent, visibile al proprietario dell'agente. Il processo di prova non va messo su un dominio, su Vercel o su un tunnel.

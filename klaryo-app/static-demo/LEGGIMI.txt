@@ -1,0 +1,16 @@
+Klaryo — dimostrazione pubblica, solo dati fittizi.
+
+Questo pacchetto è un sito statico. Non contiene il server, segreti o dati reali.
+Non è il sito di produzione e non va collegato al dominio principale.
+
+Pubblicazione:
+- estrarre lo zip in modo che index.html stia nella radice del sito o della cartella
+- gli asset sono in ./assets e i percorsi sono relativi
+- le pagine usano l'hash. Esempio: https://sottodominio/#/famiglie/lead_bianchi_demo
+- non serve un rewrite delle route
+- non aprire index.html come file locale se il browser blocca i moduli: va servito via HTTP
+
+Nella pagina si cambia ruolo a vista. È una simulazione, non un login.
+I dati restano nel browser. «Azzera dimostrazione» ripristina gli esempi.
+Non si caricano documenti e non partono invii esterni.
+Le imprese elencate sono inventate.

@@ -11,6 +11,7 @@
     "start": "tsx server/index.ts",
     "test:preview": "KLARYO_ALLOW_DEMO_PICK=1 tsx server/index.ts",
     "build": "vite build",
+    "build:static-demo": "vite build --config vite.static-demo.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
