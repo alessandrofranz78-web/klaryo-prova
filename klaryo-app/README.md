@@ -79,19 +79,11 @@ Servono Node.js 22.5 o successivo e npm. Dalla cartella `klaryo-app`:
 npm install
 npm test
 npm run typecheck
-npm run dev
-```
-
-Poi aprire `http://127.0.0.1:5173`.
-
-In un altro modo, dopo la build, l'API serve anche l'interfaccia:
-
-```bash
 npm run build
-npm start
+npm run test:preview
 ```
 
-Poi aprire `http://127.0.0.1:8787`.
+`npm run test:preview` accende la scelta del ruolo sintetico e rifiuta comunque `NODE_ENV=production`. Il processo ascolta solo sull'interfaccia locale della macchina dove lo avvii. Non è un indirizzo pubblico. Il comando stampa la porta. `npm start` senza quella variabile non mostra i pulsanti dei ruoli.
 
 `npm start` senza build risponde solo con l'API e una pagina che indica di usare Vite oppure di compilare. Non serve alcuna chiave API.
 
@@ -108,11 +100,12 @@ Variabili facoltative:
 | `KLARYO_PORT` | Porta API, default 8787 |
 | `KLARYO_DB` | Percorso del file SQLite |
 | `KLARYO_AI_BASE_URL`, `KLARYO_AI_API_KEY`, `KLARYO_AI_MODEL` | Adattatore di spiegazione, non obbligatorio |
+| `KLARYO_ALLOW_DEMO_PICK=1` | Abilita i pulsanti dei ruoli sintetici. `npm run test:preview` la imposta. Non scavalca il rifiuto di production. |
 | `NODE_ENV=production` | L'avvio viene rifiutato |
 
 ## Accessi dimostrativi
 
-Password unica: `Demo-Klaryo-2026`.
+Con `npm run test:preview` la schermata elenca i ruoli sintetici e non mostra una password. Senza quella modalità l'ingresso resta email e password, e la password non è scritta in questa pagina.
 
 | Ruolo | Email |
 | --- | --- |
@@ -134,6 +127,10 @@ Bianchi non è assegnata all'avvio: conferma, consenso e assegnazione si fanno n
 - `tests/access.test.ts`: ruoli, consenso, assegnazione, proposta che non riscrive l'analisi, segnalazione non visibile alla famiglia, ipotesi versionate.
 
 `npm run typecheck` è `tsc --noEmit`.
+
+## Anteprima nell'agente Cursor
+
+Non esiste un URL pubblico dell'app. L'anteprima supportata è il desktop remoto di questo cloud agent, visibile al proprietario dell'agente. Il processo di prova non va messo su un dominio, su Vercel o su un tunnel.
 
 ## Schermate
 

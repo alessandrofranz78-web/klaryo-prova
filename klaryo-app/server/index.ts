@@ -10,9 +10,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dbPath = process.env.KLARYO_DB ?? path.join(root, 'data', 'klaryo.sqlite');
 const port = Number(process.env.KLARYO_PORT ?? 8787);
 const db = openDatabase(dbPath);
-const app = createReadyApp(db, { distDir: path.join(root, 'dist') });
+const allowDemoPick = process.env.KLARYO_ALLOW_DEMO_PICK === '1';
+const app = createReadyApp(db, { distDir: path.join(root, 'dist'), allowDemoPick });
 
 app.listen(port, '127.0.0.1', () => {
-  console.log(`Klaryo demo su http://127.0.0.1:${port}`);
-  console.log('Accesso dimostrativo. Non è un servizio di produzione.');
+  console.log(`Klaryo prova isolata, porta ${port}, solo questa macchina. productionReady=false. demoPick=${allowDemoPick}.`);
+  console.log('NODE_ENV=production è rifiutato. Non è un indirizzo pubblico.');
 });

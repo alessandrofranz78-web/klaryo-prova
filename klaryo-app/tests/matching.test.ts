@@ -61,6 +61,7 @@ describe('stati e produzione', () => {
 
   it('rifiuta l\'avvio production', () => {
     expect(() => assertDemoRuntime({ NODE_ENV: 'production' })).toThrow(/production rifiutato/i);
+    expect(() => assertDemoRuntime({ NODE_ENV: 'production', KLARYO_ALLOW_DEMO_PICK: '1' })).toThrow(/production rifiutato/i);
     expect(() => assertDemoRuntime({ NODE_ENV: 'development' })).not.toThrow();
   });
 });

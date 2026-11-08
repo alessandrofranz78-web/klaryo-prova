@@ -19,6 +19,7 @@ import {
   createAssignment,
   createSession,
   deleteSession,
+  DEMO,
   findUserByEmail,
   firstAdminId,
   getAssignment,
@@ -144,9 +145,18 @@ function requireRole(user: UserRecord, roles: Array<UserRecord['role']>): void {
   if (!roles.includes(user.role)) throw new HttpError(403, 'Non autorizzato per questo ruolo.', 'forbidden_role');
 }
 
-export function createReadyApp(db: DB, options?: { distDir?: string; aiEnv?: AiEnv }) {
+const DEMO_PICK_EMAILS = new Set<string>([
+  DEMO.adminEmail,
+  DEMO.bianchiEmail,
+  DEMO.verdiEmail,
+  DEMO.nordEmail,
+  DEMO.centroEmail,
+]);
+
+export function createReadyApp(db: DB, options?: { distDir?: string; aiEnv?: AiEnv; allowDemoPick?: boolean }) {
   migrate(db);
   seed(db);
+  const allowDemoPick = options?.allowDemoPick === true;
   const aiEnv: AiEnv = options?.aiEnv ?? {
     apiKey: process.env.KLARYO_AI_API_KEY,
     baseUrl: process.env.KLARYO_AI_BASE_URL,
@@ -187,9 +197,32 @@ export function createReadyApp(db: DB, options?: { distDir?: string; aiEnv?: AiE
       ok: true,
       demo: true,
       productionReady: false,
+      demoPick: allowDemoPick,
       ai: Boolean(aiEnv.apiKey && aiEnv.baseUrl) ? 'configured' : 'not_configured',
     });
   });
+
+  router.post(
+    '/demo-session',
+    wrap((req, res) => {
+      if (!allowDemoPick || process.env.NODE_ENV === 'production') {
+        throw new HttpError(403, 'Scelta del ruolo disattivata su questo avvio.', 'demo_pick_disabled');
+      }
+      const body = z.object({ email: z.string().trim().email().max(200) }).parse(req.body);
+      const email = body.email.toLowerCase();
+      if (!DEMO_PICK_EMAILS.has(email)) {
+        throw new HttpError(403, 'Questo indirizzo non è un utente sintetico di prova.', 'demo_pick_denied');
+      }
+      const user = findUserByEmail(db, email);
+      if (!user) throw new HttpError(403, 'Utente sintetico non trovato.', 'demo_pick_denied');
+      const sessionId = createSession(db, user.id);
+      res.setHeader(
+        'Set-Cookie',
+        `klaryo_session=${encodeURIComponent(sessionId)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200`,
+      );
+      res.json({ user: publicUser(user), demo: true, productionReady: false });
+    }),
+  );
 
   router.post(
     '/login',

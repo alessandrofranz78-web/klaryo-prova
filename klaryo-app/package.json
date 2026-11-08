@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "concurrently -k -n api,web -c yellow,green \"tsx watch server/index.ts\" \"vite --host 127.0.0.1\"",
     "start": "tsx server/index.ts",
+    "test:preview": "KLARYO_ALLOW_DEMO_PICK=1 tsx server/index.ts",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

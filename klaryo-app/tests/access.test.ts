@@ -26,7 +26,11 @@ describe('confini di accesso e pratica', () => {
     const health = await call('/api/health');
     expect(health.status).toBe(200);
     expect(health.body.productionReady).toBe(false);
+    expect(health.body.demoPick).toBe(false);
     expect(health.body.ai).toBe('not_configured');
+    const pick = await call('/api/demo-session', { method: 'POST', body: { email: DEMO.bianchiEmail } });
+    expect(pick.status).toBe(403);
+    expect(pick.body.code).toBe('demo_pick_disabled');
 
     const home = await fetch(base + '/');
     const html = await home.text();
